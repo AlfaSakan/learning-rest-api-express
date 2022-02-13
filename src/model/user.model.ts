@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import config from "config";
+import log from "../logger";
 
 export interface UserDocument extends mongoose.Document {
   email: string;
@@ -22,14 +23,14 @@ const UserSchema = new mongoose.Schema(
   }
 );
 
-UserSchema.pre("save", async (next) => {
-  let user = this as unknown as UserDocument;
+UserSchema.pre("save", async function (next) {
+  let user = this as UserDocument;
 
   // Only hash the password if it has been modified (or is new)
-  if (user.isModified("password")) return next();
+  if (!user.isModified("password")) return next();
 
   // Random additional data
-  const salt = await bcrypt.genSalt(config.get("saltWorkFactor"));
+  const salt = await bcrypt.genSalt(config.get("saltWorkFactor") as number);
 
   const hash = await bcrypt.hash(user.password, salt);
 
@@ -39,11 +40,12 @@ UserSchema.pre("save", async (next) => {
   return next();
 });
 
-UserSchema.methods.comparedPassword = async (candidatePassword: string) => {
+UserSchema.methods.comparedPassword = async function (candidatePassword: string) {
   try {
-    const user = this as unknown as UserDocument;
-    return bcrypt.compare(candidatePassword, user.password);
+    const user = this as UserDocument;
+    return await bcrypt.compare(candidatePassword, user.password);
   } catch (error) {
+    log.error(error);
     return false;
   }
 };

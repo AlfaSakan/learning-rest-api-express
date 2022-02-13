@@ -1,7 +1,18 @@
 import { Express, Request, Response } from "express";
+
 import { createUserHandler } from "./controller/user.controller";
-import validateRequest from "./middleware/validateRequest";
-import { createUserSchema } from "./schema/user.schema";
+import {
+  createUserSessionHandler,
+  getUserSessionHandler,
+  invalidateUserSessionHandler,
+} from "./controller/session.controller";
+
+import { validateRequest, requiresUser } from "./middleware";
+
+import {
+  createUserSchema,
+  createUserSessionSchema,
+} from "./schema/user.schema";
 
 export default function (app: Express) {
   app.get("/healthCheck", (req: Request, res: Response) => res.sendStatus(200));
@@ -10,11 +21,15 @@ export default function (app: Express) {
   app.post("/api/users", validateRequest(createUserSchema), createUserHandler);
 
   // Login User
-  // POST /api/login
+  app.post(
+    "/api/sessions",
+    validateRequest(createUserSessionSchema),
+    createUserSessionHandler
+  );
 
   // Get user's session
-  // GET /api/sessions
+  app.get("/api/sessions", requiresUser, getUserSessionHandler);
 
   // Logout
-  // DELETE /api/sessions
+  app.delete("/api/sessions", requiresUser, invalidateUserSessionHandler);
 }
